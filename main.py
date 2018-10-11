@@ -24,33 +24,46 @@ seconds = ntptime.time()
 rtc = RTC()
 rtc.datetime(utime.localtime(seconds))
 
-def time():
+outlet = machine.Pin(16, machine.Pin.OUT)
+def set_outlet(post):
+    # Change outlet's value based on input from site
+    if 'on' in post:
+        outlet.on()
+    elif 'off' in post:
+        outlet.off()
+        
     body = """<html>
     <body>
-    <h1>Time</h1>
-    <p>%s</p>
+    <h2>Smart Outlet Switch</h2>
+    <h3>Currently: {}</h3>
+    <form action="" method="POST">
+    <button name="on" value="on">Turn on!</button><br>
+    </form>
+    <form action="" method="POST">
+    <button name="off" value="off">Turn off</button>
+    </form>
     </body>
     </html>
-    """ % str(rtc.datetime())
-
+    """.format(outlet.value())
+    
     return response_template % body
 
 
-outlet = machine.Pin(16, machine.Pin.OUT)
-def set_outlet():
-    
+
 func_pins = {
-    
+    'outlet': 16,
 }
 
 handlers = {
+    '': set_outlet,
     'time': time,
+    'set_outlet': set_outlet,
 }
 
 def main():
     s = socket.socket()
-    ai = socket.getaddrinfo("0.0.0.0", 8080)
-    addr = ai[0][-1]
+    s_addr_info = socket.getaddrinfo("0.0.0.0", 8080)
+    addr = s_addr_info[0][-1]
     
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
@@ -60,7 +73,7 @@ def main():
     print("make sure the functions are connected to the correct pins")
     for func, pin in func_pins.items():
         print(func + ": " + str(pin))
-        
+
     print("Listening, connect your browser to http://<this_host>:8080/")
     
     while True:
@@ -76,10 +89,12 @@ def main():
         # "/arbitrary/path/"
         path = req.decode().split("\r\n")[0].split(" ")[1]
         print(path)
+        req = req.decode().split("\r\n")
+        print(req)
         # Given the path, identify the correct handler to use
         try:
-            handler = handlers[path.strip('/').split('/')[0]]  
-            response = handler()
+            handler = handlers[path.strip('/').split('/')[0]]
+            response = handler(req[-1])
         except KeyError:
             response = response_404
         except Exception as e:
