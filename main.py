@@ -24,40 +24,28 @@ seconds = ntptime.time()
 rtc = RTC()
 rtc.datetime(utime.localtime(seconds))
 
-outlet = machine.Pin(16, machine.Pin.OUT)
+OUTLET_PIN = 5
+outlet = machine.Pin(OUTLET_PIN, machine.Pin.OUT)
 def set_outlet(post):
     # Change outlet's value based on input from site
-    if 'on' in post:
-        outlet.on()
-    elif 'off' in post:
-        outlet.off()
-        
+    curr_val = {0: 'off', 1:'on'}
+    if post != '':
+        outlet.value((outlet.value()+1) % 2)
     body = """<html>
     <body>
     <h2>Smart Outlet Switch</h2>
     <h3>Currently: {}</h3>
     <form action="" method="POST">
-    <button name="on" value="on">Turn on!</button><br>
-    </form>
-    <form action="" method="POST">
-    <button name="off" value="off">Turn off</button>
+    <button name="outlet" value="switch">Switch on/off</button><br>
     </form>
     </body>
     </html>
-    """.format(outlet.value())
+    """.format(curr_val[outlet.value()])
     
     return response_template % body
 
-
-
 func_pins = {
-    'outlet': 16,
-}
-
-handlers = {
-    '': set_outlet,
-    'time': time,
-    'set_outlet': set_outlet,
+    'outlet': OUTLET_PIN,
 }
 
 def main():
@@ -81,27 +69,22 @@ def main():
         client_s = res[0]
         client_addr = res[1]
         req = client_s.recv(4096)
-        print("Request:")
-        print(req)
+        print("Request:\n" + str(req))
         
         # The first line of a request looks like "GET /arbitrary/path/ HTTP/1.1".
-        # This grabs that first line and whittles it down to just
-        # "/arbitrary/path/"
-        path = req.decode().split("\r\n")[0].split(" ")[1]
-        print(path)
+        
         req = req.decode().split("\r\n")
         print(req)
-        # Given the path, identify the correct handler to use
+
         try:
-            handler = handlers[path.strip('/').split('/')[0]]
-            response = handler(req[-1])
-        except KeyError:
-            response = response_404
+            # POST requests' last bit of info is the name=value of the form.
+            # If it's a GET request then set_outlet does nothing.
+            response = set_outlet(req[-1])
         except Exception as e:
             response = response_500
             print(e)
         
-        # A handler returns an entire response in the form of a multi-line string.
+        # response is in the form of a multi-line string.
         # This breaks up the response into single strings, byte-encodes them, and
         # joins them back together with b"\r\n". Then it sends that to the client.
         client_s.send(b"\r\n".join([line.encode() for line in response.split("\n")]))
