@@ -1,14 +1,12 @@
 #This file is executed on every boot (including wake boot from deepsleep)
 
-
 import gc
 import webrepl
+import network
+import time
 
 webrepl.start()
 gc.collect()
-
-import network
-import time
 
 sta_if = network.WLAN(network.STA_IF)
 sta_if.active(True)
@@ -36,4 +34,6 @@ for connection in connections:
         print("localhost address is: {}".format(sta_if.ifconfig()[0]))
         break
     else:
-        print("Connection could not be made.\n")            
+        print("Connection could not be made.\n")
+
+print("Access the webrepl for this device at: {}:8266".format(sta_if.ifconfig()[0])

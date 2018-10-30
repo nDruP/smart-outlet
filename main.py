@@ -17,27 +17,24 @@ response_template = """HTTP/1.1 200 OK
 """
 
 import machine
-import ntptime, utime
-from machine import RTC
 
-seconds = ntptime.time()
-rtc = RTC()
-rtc.datetime(utime.localtime(seconds))
 
 OUTLET_PIN = 5
 outlet = machine.Pin(OUTLET_PIN, machine.Pin.OUT)
 def set_outlet(post):
-    # Change outlet's value based on input from site
+    # Change outlet's value based on whether or not it received a POST request from site
     curr_val = {0: 'off', 1:'on'}
-    if post != '':
+
+    if post:
         outlet.value((outlet.value()+1) % 2)
+        
     body = """<html>
     <body>
-    <h2>Smart Outlet Switch</h2>
-    <h3>Currently: {}</h3>
-    <form action="" method="POST">
-    <button name="outlet" value="switch">Switch on/off</button><br>
-    </form>
+        <h2>Smart Outlet Switch</h2>
+        <h3>Currently: {}</h3>
+        <form action="" method="POST">
+            <button name="outlet" value="switch">Switch on/off</button><br>
+        </form>
     </body>
     </html>
     """.format(curr_val[outlet.value()])
@@ -49,6 +46,9 @@ func_pins = {
 }
 
 def main():
+    """
+    Creates+Opens a socket to serve an HTML page.
+    """
     s = socket.socket()
     s_addr_info = socket.getaddrinfo("0.0.0.0", 8080)
     addr = s_addr_info[0][-1]
@@ -62,8 +62,8 @@ def main():
     for func, pin in func_pins.items():
         print(func + ": " + str(pin))
 
-    print("Listening, connect your browser to http://<this_host>:8080/")
-    
+    print("Listening, connect your browser to http://{}:8080/".format(addr))
+
     while True:
         res = s.accept()
         client_s = res[0]
@@ -79,7 +79,7 @@ def main():
         try:
             # POST requests' last bit of info is the name=value of the form.
             # If it's a GET request then set_outlet does nothing.
-            response = set_outlet(req[-1])
+            response = set_outlet('POST' in req[0])
         except Exception as e:
             response = response_500
             print(e)
@@ -90,6 +90,6 @@ def main():
         client_s.send(b"\r\n".join([line.encode() for line in response.split("\n")]))
 
         client_s.close()
-        print()
+        print("\n*************************")
         
 main()
