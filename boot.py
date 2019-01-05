@@ -47,4 +47,4 @@ for connection in connections:
     else:
         print("Connection could not be made to {}\n").format(station)
 
-print("Access the webrepl for this device at: {}:8266".format(sta_if.ifconfig()[0])
+print("Access the webrepl for this device at: {}:8266".format(sta_if.ifconfig()[0]))
